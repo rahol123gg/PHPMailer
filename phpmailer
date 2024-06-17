@@ -1,0 +1,74 @@
+<?php
+// تحميل مكتبة PHPMailer
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'path/to/PHPMailer/src/Exception.php';
+require 'path/to/PHPMailer/src/PHPMailer.php';
+require 'path/to/PHPMailer/src/SMTP.php';
+
+// إعدادات API الخاصة ببايير
+$payeerAccount = 'YOUR_PAYEER_ACCOUNT';
+$apiId = 'YOUR_API_ID';
+$apiKey = 'YOUR_API_KEY';
+
+// معلومات السحب
+$payeerTo = 'RECIPIENT_PAYEER_ACCOUNT';
+$amount = 10; // المبلغ المراد سحبه
+$currency = 'USD';
+
+// إعداد الطلب
+$data = [
+    'account' => $payeerAccount,
+    'apiId' => $apiId,
+    'apiPass' => $apiKey,
+    'action' => 'transfer',
+    'sum' => $amount,
+    'curIn' => $currency,
+    'curOut' => $currency,
+    'to' => $payeerTo,
+    'comment' => 'Withdrawal'
+];
+
+// تنفيذ الطلب
+$ch = curl_init('https://payeer.com/ajax/api/api.php');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+
+$response = curl_exec($ch);
+curl_close($ch);
+
+$responseData = json_decode($response, true);
+
+if ($responseData['success']) {
+    // إعدادات البريد الإلكتروني
+    $mail = new PHPMailer(true);
+
+    try {
+        // إعدادات الخادم
+        $mail->isSMTP();
+        $mail->Host = 'smtp.example.com'; // ضع هنا خادم SMTP الخاص بك
+        $mail->SMTPAuth = true;
+        $mail->Username = 'your_email@example.com'; // ضع هنا عنوان بريدك الإلكتروني
+        $mail->Password = 'your_email_password'; // ضع هنا كلمة مرور بريدك الإلكتروني
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+        $mail->Port = 587;
+
+        // إعدادات المستلم
+        $mail->setFrom('your_email@example.com', 'Your Name');
+        $mail->addAddress('recipient@example.com', 'Recipient Name');
+
+        // محتوى البريد الإلكتروني
+        $mail->isHTML(true);
+        $mail->Subject = 'Successful Withdrawal';
+        $mail->Body = 'The withdrawal of ' . $amount . ' ' . $currency . ' to Payeer account ' . $payeerTo . ' was successful.';
+
+        $mail->send();
+        echo 'Message has been sent';
+    } catch (Exception $e) {
+        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+    }
+} else {
+    echo 'Withdrawal failed: ' . $responseData['errors'][0]['message'];
+}
+?>
